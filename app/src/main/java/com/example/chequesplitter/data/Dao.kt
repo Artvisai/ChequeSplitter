@@ -9,14 +9,14 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface Dao {
     @Insert
-    suspend fun insertProduct(product: Product)
+    suspend fun insertCheque(cheque: Cheque)
 
     @Update
-    suspend fun updateProduct(product: Product)
+    suspend fun updateCheque(cheque: Cheque)
 
-    @Query("SELECT * FROM products")
-    fun getAllProducts(): Flow<List<Product>>
+    @Query("SELECT * FROM cheques")
+    fun getAllCheques(): Flow<List<Cheque>>
 
-    @Query("SELECT * FROM products WHERE idQR = :qr")
-    fun getProductByQr(qr: String): Product?
+    @Query("SELECT * FROM cheques WHERE qrData = :qr")
+    fun getChequeByQr(qr: String): Cheque?
 }

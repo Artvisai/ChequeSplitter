@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.chequesplitter.data.MainDb
-import com.example.chequesplitter.data.Product
+import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.ui.theme.ComposeLesson7Theme
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -30,6 +30,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -49,14 +52,16 @@ class MainActivity : ComponentActivity() {
             ).show()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                val productByQr = mainDb.dao.getProductByQr(result.contents)
-                if (productByQr == null){
-                    mainDb.dao.insertProduct(Product(
+                val chequeByQr = mainDb.dao.getChequeByQr(result.contents)
+                if (chequeByQr == null){
+                    //parsing data there
+
+                    //add an item if not added
+                    mainDb.dao.insertCheque(Cheque(
                         null,
-                        "Sauce - ${counter++}",
-                        2,
-                        70,
-                        result.contents
+                        "Store - ${counter++}",
+                        result.contents,
+                        LocalDateTime.of(LocalDate.now(), LocalTime.now())
                     ))
                     runOnUiThread {
                         Toast.makeText(
@@ -85,7 +90,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var counter = 0
-            val productStateList = mainDb.dao.getAllProducts()
+            val chequeStateList = mainDb.dao.getAllCheques()
                 .collectAsState(initial = emptyList())
 
             ComposeLesson7Theme {
@@ -99,7 +104,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .fillMaxHeight(0.9f),
                     ) {
-                        items(productStateList.value) { product ->
+                        items(chequeStateList.value) { cheque ->
                             Spacer(modifier = Modifier.height(10.dp))
                             Card(modifier = Modifier
                                 .fillMaxWidth()
@@ -109,7 +114,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(15.dp),
-                                    text = product.name,
+                                    text = cheque.qrData,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -118,7 +123,7 @@ class MainActivity : ComponentActivity() {
                     Button(onClick = {
                         scan()
                     }) {
-                        Text(text = "Add new product")
+                        Text(text = "Add new cheque")
                     }
                 }
             }

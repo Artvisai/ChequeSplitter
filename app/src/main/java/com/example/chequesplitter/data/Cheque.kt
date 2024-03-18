@@ -1,13 +1,14 @@
 package com.example.chequesplitter.data
 
-/*
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import java.time.LocalDateTime
 
-@Entity(tableName = "Cheques")
+@Entity(tableName = "cheques")
 data class Cheque(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int? = null,
-    val storeName: String,
-    val qrData: String,
-    val date: LocalDateTime
+@PrimaryKey(autoGenerate = true)
+val id: Int? = null,
+val storeName: String,
+val qrData: String,
+val date: LocalDateTime? = null
 )
-*/
