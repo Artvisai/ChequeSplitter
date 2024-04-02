@@ -14,9 +14,14 @@ interface Dao {
 
     @Update
     suspend fun updateCheque(cheque: Cheque)
-    /*@Transaction
-    @Query("SELECT * FROM cheques")
-    fun getAllChequesWithProducts(): List<ChequeWithProducts>*/
+    @Insert
+    suspend fun insertProduct(product: Product)
+
+    @Update
+    suspend fun updateProduct(product: Product)
+
+    @Query("SELECT * FROM products WHERE idQR = :qr")
+    fun getAllProductsByQr(qr: String): Flow<List<Product>>
 
     @Query("SELECT * FROM cheques")
     fun getAllCheques(): Flow<List<Cheque>>

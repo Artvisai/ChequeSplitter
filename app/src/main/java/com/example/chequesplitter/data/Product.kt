@@ -8,17 +8,17 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "products", foreignKeys = [ForeignKey(
     entity = Cheque::class,
-    parentColumns = arrayOf("chequeId"),
-    childColumns = arrayOf("productParentId"),
+    parentColumns = arrayOf("qrData"),
+    childColumns = arrayOf("idQR"),
     onDelete = ForeignKey.CASCADE
 )])
 data class Product(
     @PrimaryKey(autoGenerate = true)
     val productId: Int? = null,
     val name: String,
-    val count: Int,
+    val quantity: Float,
     val price: Int,
-    val idQR: String,
+    val sum: Int,
     @ColumnInfo(index = true)
-    val productParentId: Int
+    val idQR: String,
 )

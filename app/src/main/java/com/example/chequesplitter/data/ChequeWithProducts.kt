@@ -8,8 +8,8 @@ import androidx.room.Relation
 data class ChequeWithProducts(
     @Embedded val cheque: Cheque,
     @Relation(
-        parentColumn = "chequeId",
-        entityColumn = "productParentId"
+        parentColumn = "qrData",
+        entityColumn = "idQR"
     )
     val products: List<Product>
 )*/

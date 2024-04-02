@@ -6,9 +6,8 @@ import java.time.LocalDateTime
 
 @Entity(tableName = "cheques")
 data class Cheque(
-@PrimaryKey(autoGenerate = true)
-val chequeId: Int? = null,
-val storeName: String,
+@PrimaryKey
 val qrData: String,
+val storeName: String,
 val date: LocalDateTime? = null
 )

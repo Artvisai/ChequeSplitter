@@ -20,6 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Recomposer
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +35,7 @@ import com.android.volley.toolbox.Volley
 import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.data.MyInterface
+import com.example.chequesplitter.data.Product
 import com.example.chequesplitter.ui.theme.ChequeSplitterTheme
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -111,6 +114,7 @@ class MainActivity : ComponentActivity(), MyInterface {
             var counter = 0
             val chequeStateList = mainDb.dao.getAllCheques()
                 .collectAsState(initial = emptyList())
+            var productStateList : State<List<Product>>
 
 
             ChequeSplitterTheme {
@@ -134,9 +138,33 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(15.dp),
-                                    text = cheque.chequeId.toString() + " " + cheque.storeName + "\n" + cheque.date,
+                                    text = cheque.storeName + "\n" + cheque.date,
                                     textAlign = TextAlign.Center
                                 )
+                                productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
+                                    .collectAsState(initial = emptyList())
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .padding(top = 10.dp)
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(0.1f),
+                                ){
+                                    items(productStateList.value){product ->
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Card(modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 10.dp, end = 10.dp)
+                                        ){
+                                            Text(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(15.dp),
+                                                text = product.name + " " + product.price,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -201,15 +229,30 @@ class MainActivity : ComponentActivity(), MyInterface {
                     val date = LocalDate.parse(arrayDateTime[0], DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                     val time = LocalTime.parse(arrayDateTime[1], DateTimeFormatter.ofPattern("HH:mm:ss"))
                     Log.e("MyLog","Response: ${temp.getString("dateTime")}")
+                    val productArray = temp.getJSONArray("items")
                     CoroutineScope(Dispatchers.IO).launch {
                         mainDb.dao.insertCheque(
                             Cheque(
-                                null,
-                                "Store - ${temp.getString("user")}",
                                 qrraw,
+                                "Store - ${temp.getString("user")}",
                                 LocalDateTime.of(date, time)
                             )
                         )
+                        for (i in 0 until productArray.length()){
+                            val product = productArray[i] as JSONObject
+                            Log.e("MyLog","Product: $product")
+                            mainDb.dao.insertProduct(
+                                Product(
+                                    null,
+                                    product.getString("name"),
+                                    product.getString("quantity").toFloat(),
+                                    product.getString("price").toInt(),
+                                    product.getString("sum").toInt(),
+                                    qrraw
+                                )
+                            )
+                        }
+
                     }
                     runOnUiThread {
                         Toast.makeText(
