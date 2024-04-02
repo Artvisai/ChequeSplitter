@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(15.dp),
-                                    text = cheque.storeName + "\n" + cheque.date,
+                                    text = cheque.chequeId.toString() + " " + cheque.storeName + "\n" + cheque.date,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity(), MyInterface {
     private fun scan() {
         val options = ScanOptions()
         options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-        options.setPrompt("Scan a barcode")
+        options.setPrompt("Scan a QR-code")
         options.setCameraId(0) // Use a specific camera of the device
         options.setBeepEnabled(false)
         options.setBarcodeImageEnabled(true)
@@ -194,6 +194,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                     Log.e("MyLog", response)
                     val obj = JSONObject(response)
                     val temp = obj.getJSONObject("data").getJSONObject("json")
+                    //Name of Store
                     this.onCallback(temp.getString("user"))
                     //2020-10-17T19:23:00
                     val arrayDateTime = temp.getString("dateTime").split("T")
@@ -242,36 +243,4 @@ class MainActivity : ComponentActivity(), MyInterface {
     override fun onCallback(response: String): String {
         return response
     }
-    /*fun sendcall() {
-        val url = "https://proverkacheka.com/api/v1/check/get"
-        //RequestQueue initialized
-        val queue = Volley.newRequestQueue(this)
-        //String Request initialized
-        val stringRequest = object : StringRequest(
-            Request.Method.POST,
-            url,
-            {
-                response ->
-                    Toast.makeText(applicationContext, "Logged In Successfully", Toast.LENGTH_SHORT).show()
-            },
-            {
-                error ->
-                    Log.i("This is the error", "Error :" + error.toString())
-                    Toast.makeText(applicationContext, "Please make sure you enter correct password and username", Toast.LENGTH_SHORT).show()
-            }) {
-                override fun getBodyContentType(): String {
-                return "application/json"
-            }
-
-            @Throws(AuthFailureError::class)
-            override fun getBody(): ByteArray {
-                val params2 = HashMap<String, String>()
-                params2.put("Login","your credentials" )
-                params2.put("Password", "your credentials")
-                return JSONObject(params2).toString().toByteArray()
-            }
-
-        }
-        queue!!.add(stringRequest!!)
-    }*/
 }

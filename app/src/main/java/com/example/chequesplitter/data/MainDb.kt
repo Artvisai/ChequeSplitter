@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [/*Cheque::class, */Cheque::class],
+    entities = [Cheque::class, Product::class/*, ChequeWithProducts::class*/],
     version = 1
 )
 @TypeConverters(Converters::class)
