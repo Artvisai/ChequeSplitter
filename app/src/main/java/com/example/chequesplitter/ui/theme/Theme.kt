@@ -38,7 +38,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun ComposeLesson7Theme(
+fun ChequeSplitterTheme(
         darkTheme: Boolean = isSystemInDarkTheme(),
         // Dynamic color is available on Android 12+
         dynamicColor: Boolean = true,

@@ -1,10 +1,13 @@
 package com.example.chequesplitter
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,30 +19,43 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.volley.AuthFailureError
+import com.android.volley.Response
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
 import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.Cheque
-import com.example.chequesplitter.ui.theme.ComposeLesson7Theme
+import com.example.chequesplitter.data.MyInterface
+import com.example.chequesplitter.ui.theme.ChequeSplitterTheme
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONException
+import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+const val API_TOKEN = "Ваш API-токен"
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), MyInterface {
     @Inject
     lateinit var mainDb: MainDb
     var counter = 0
+
+
 
     private val scanLauncher = registerForActivityResult(
         ScanContract()
@@ -55,9 +71,10 @@ class MainActivity : ComponentActivity() {
                 val chequeByQr = mainDb.dao.getChequeByQr(result.contents)
                 if (chequeByQr == null){
                     //parsing data there
+                    getChequeResult(result.contents)
 
                     //add an item if not added
-                    mainDb.dao.insertCheque(Cheque(
+                    /*mainDb.dao.insertCheque(Cheque(
                         null,
                         "Store - ${counter++}",
                         result.contents,
@@ -69,8 +86,9 @@ class MainActivity : ComponentActivity() {
                             "Item saved!",
                             Toast.LENGTH_SHORT
                         ).show()
-                    }
+                    }*/
                 }else{
+                    /*getChequeResult(result.contents)*/
                     runOnUiThread {
                         Toast.makeText(
                             this@MainActivity,
@@ -86,6 +104,7 @@ class MainActivity : ComponentActivity() {
     }
 
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -93,7 +112,8 @@ class MainActivity : ComponentActivity() {
             val chequeStateList = mainDb.dao.getAllCheques()
                 .collectAsState(initial = emptyList())
 
-            ComposeLesson7Theme {
+
+            ChequeSplitterTheme {
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -114,18 +134,34 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(15.dp),
-                                    text = cheque.qrData,
+                                    text = cheque.storeName + "\n" + cheque.date,
                                     textAlign = TextAlign.Center
                                 )
                             }
                         }
                     }
-                    Button(onClick = {
-                        scan()
-                    }) {
-                        Text(text = "Add new cheque")
-                    }
+                    ButtonsRow()
                 }
+            }
+        }
+    }
+    @Preview (showBackground = true)
+    @Composable
+    fun ButtonsRow(){
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ){
+            Button(onClick = {
+                scan()
+            }) {
+                Text(text = "Scan cheque")
+            }
+            Button(onClick = {
+
+            }) {
+                Text(text = "Add cheque")
             }
         }
     }
@@ -139,4 +175,103 @@ class MainActivity : ComponentActivity() {
         options.setBarcodeImageEnabled(true)
         scanLauncher.launch(options)
     }
+
+    private fun getChequeResult(qrraw: String) {
+        val url = "https://proverkacheka.com/api/v1/check/get"
+        val queue = Volley.newRequestQueue(this)
+        val requestBody: String
+        try{
+            val jsonBody = JSONObject()
+            jsonBody.put("qrraw", qrraw)
+            jsonBody.put("token", API_TOKEN)
+            requestBody = jsonBody.toString()
+
+            val stringRequest = object : StringRequest(
+                Method.POST,
+                url,
+                Response.Listener {
+                response->
+                    Log.e("MyLog", response)
+                    val obj = JSONObject(response)
+                    val temp = obj.getJSONObject("data").getJSONObject("json")
+                    this.onCallback(temp.getString("user"))
+                    //2020-10-17T19:23:00
+                    val arrayDateTime = temp.getString("dateTime").split("T")
+                    val date = LocalDate.parse(arrayDateTime[0], DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    val time = LocalTime.parse(arrayDateTime[1], DateTimeFormatter.ofPattern("HH:mm:ss"))
+                    Log.e("MyLog","Response: ${temp.getString("dateTime")}")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        mainDb.dao.insertCheque(
+                            Cheque(
+                                null,
+                                "Store - ${temp.getString("user")}",
+                                qrraw,
+                                LocalDateTime.of(date, time)
+                            )
+                        )
+                    }
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Item saved!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    Log.e("MyLog","Response: ${temp.getString("user")}")
+                },
+
+                Response.ErrorListener {
+                    Log.e("MyLog","Volley error: $it")
+                }
+            ){
+                override fun getBodyContentType(): String {
+                    return "application/json"
+                }
+
+                @Throws(AuthFailureError::class)
+                override fun getBody(): ByteArray {
+                    return requestBody.toByteArray()
+                }
+            }
+            queue.add(stringRequest)
+        } catch (e: JSONException){
+            e.printStackTrace()
+        }
+    }
+
+    override fun onCallback(response: String): String {
+        return response
+    }
+    /*fun sendcall() {
+        val url = "https://proverkacheka.com/api/v1/check/get"
+        //RequestQueue initialized
+        val queue = Volley.newRequestQueue(this)
+        //String Request initialized
+        val stringRequest = object : StringRequest(
+            Request.Method.POST,
+            url,
+            {
+                response ->
+                    Toast.makeText(applicationContext, "Logged In Successfully", Toast.LENGTH_SHORT).show()
+            },
+            {
+                error ->
+                    Log.i("This is the error", "Error :" + error.toString())
+                    Toast.makeText(applicationContext, "Please make sure you enter correct password and username", Toast.LENGTH_SHORT).show()
+            }) {
+                override fun getBodyContentType(): String {
+                return "application/json"
+            }
+
+            @Throws(AuthFailureError::class)
+            override fun getBody(): ByteArray {
+                val params2 = HashMap<String, String>()
+                params2.put("Login","your credentials" )
+                params2.put("Password", "your credentials")
+                return JSONObject(params2).toString().toByteArray()
+            }
+
+        }
+        queue!!.add(stringRequest!!)
+    }*/
 }
