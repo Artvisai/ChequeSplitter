@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,8 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Recomposer
@@ -25,6 +29,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
+import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -75,21 +82,6 @@ class MainActivity : ComponentActivity(), MyInterface {
                 if (chequeByQr == null){
                     //parsing data there
                     getChequeResult(result.contents)
-
-                    //add an item if not added
-                    /*mainDb.dao.insertCheque(Cheque(
-                        null,
-                        "Store - ${counter++}",
-                        result.contents,
-                        LocalDateTime.of(LocalDate.now(), LocalTime.now())
-                    ))
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Item saved!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }*/
                 }else{
                     /*getChequeResult(result.contents)*/
                     runOnUiThread {
@@ -124,15 +116,16 @@ class MainActivity : ComponentActivity(), MyInterface {
                 ) {
                     LazyColumn(
                         modifier = Modifier
-                            .padding(top = 15.dp)
+                            .padding(10.dp)
                             .fillMaxWidth()
                             .fillMaxHeight(0.9f),
                     ) {
                         items(chequeStateList.value) { cheque ->
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Card(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 10.dp, end = 10.dp)
+                            Card(colors = CardDefaults.cardColors(
+                                containerColor = Color.Blue,
+                            ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
                             ) {
                                 Text(
                                     modifier = Modifier
@@ -141,31 +134,31 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     text = cheque.storeName + "\n" + cheque.date,
                                     textAlign = TextAlign.Center
                                 )
-                                productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
-                                    .collectAsState(initial = emptyList())
-                                LazyColumn(
-                                    modifier = Modifier
-                                        .padding(top = 10.dp)
-                                        .fillMaxWidth()
-                                        .fillMaxHeight(0.1f),
-                                ){
-                                    items(productStateList.value){product ->
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Card(modifier = Modifier
+                            }
+                            productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
+                                .collectAsState(initial = emptyList())
+                            Column(
+                                modifier = Modifier
+                                    .padding(bottom = 10.dp)
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.Cyan),
+                            ){
+                                for ((i, items) in productStateList.value.withIndex()){
+                                    Text(
+                                        modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 10.dp, end = 10.dp)
-                                        ){
-                                            Text(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(15.dp),
-                                                text = product.name + " " + product.price,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    }
+                                            .padding(15.dp),
+                                        text = (i+1).toString() + ". " + items.name +
+                                                "\n Summary: " +
+                                                NumberFormat.getCurrencyInstance().format(items.price.toFloat()/100) +
+                                                " * " + items.quantity + " = " +
+                                                NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
+                                    )
+
                                 }
                             }
+
                         }
                     }
                     ButtonsRow()
@@ -218,7 +211,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                 Method.POST,
                 url,
                 Response.Listener {
-                response->
+                        response->
                     Log.e("MyLog", response)
                     val obj = JSONObject(response)
                     val temp = obj.getJSONObject("data").getJSONObject("json")
@@ -234,7 +227,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                         mainDb.dao.insertCheque(
                             Cheque(
                                 qrraw,
-                                "Store - ${temp.getString("user")}",
+                                temp.getString("user"),
                                 LocalDateTime.of(date, time)
                             )
                         )
