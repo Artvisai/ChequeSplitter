@@ -6,27 +6,30 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +46,12 @@ import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.data.MyInterface
 import com.example.chequesplitter.data.Product
 import com.example.chequesplitter.ui.theme.ChequeSplitterTheme
+import com.example.chequesplitter.ui.theme.Purple200
+import com.example.chequesplitter.ui.theme.Purple40
+import com.example.chequesplitter.ui.theme.Purple50
+import com.example.chequesplitter.ui.theme.Purple80
+import com.example.chequesplitter.ui.theme.PurpleGrey100
+import com.example.chequesplitter.ui.theme.PurpleGrey80
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import dagger.hilt.android.AndroidEntryPoint
@@ -83,7 +92,6 @@ class MainActivity : ComponentActivity(), MyInterface {
                     //parsing data there
                     getChequeResult(result.contents)
                 }else{
-                    /*getChequeResult(result.contents)*/
                     runOnUiThread {
                         Toast.makeText(
                             this@MainActivity,
@@ -99,15 +107,11 @@ class MainActivity : ComponentActivity(), MyInterface {
     }
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var counter = 0
             val chequeStateList = mainDb.dao.getAllCheques()
                 .collectAsState(initial = emptyList())
-            var productStateList : State<List<Product>>
-
 
             ChequeSplitterTheme {
                 Column(
@@ -121,44 +125,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                             .fillMaxHeight(0.9f),
                     ) {
                         items(chequeStateList.value) { cheque ->
-                            Card(colors = CardDefaults.cardColors(
-                                containerColor = Color.Blue,
-                            ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                            ) {
-                                Text(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(15.dp),
-                                    text = cheque.storeName + "\n" + cheque.date,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                            productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
-                                .collectAsState(initial = emptyList())
-                            Column(
-                                modifier = Modifier
-                                    .padding(bottom = 10.dp)
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color.Cyan),
-                            ){
-                                for ((i, items) in productStateList.value.withIndex()){
-                                    Text(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(15.dp),
-                                        text = (i+1).toString() + ". " + items.name +
-                                                "\n Summary: " +
-                                                NumberFormat.getCurrencyInstance().format(items.price.toFloat()/100) +
-                                                " * " + items.quantity + " = " +
-                                                NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
-                                    )
-
-                                }
-                            }
-
+                            ChequeItem(cheque)
                         }
                     }
                     ButtonsRow()
@@ -166,6 +133,62 @@ class MainActivity : ComponentActivity(), MyInterface {
             }
         }
     }
+
+    @Composable
+    fun ChequeItem(cheque: Cheque){
+        var isExpanded by remember {
+            mutableStateOf(false)
+        }
+        val productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
+            .collectAsState(initial = emptyList())
+        Card(colors = CardDefaults.cardColors(
+            containerColor = Purple200,
+        ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = if (isExpanded) 0.dp else 10.dp)
+                .clickable {
+                    isExpanded = !isExpanded
+                }
+        ) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(15.dp),
+                text = cheque.storeName + "\n" + cheque.date,
+                textAlign = TextAlign.Center
+            )
+        }
+        if (isExpanded)
+            ProductsColumn(productStateList)
+    }
+
+    @Composable
+    fun ProductsColumn(productStateList: State<List<Product>>){
+        Column(
+            modifier = Modifier
+                .padding(bottom = 10.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(PurpleGrey100),
+        ){
+            for ((i, items) in productStateList.value.withIndex()){
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(15.dp),
+                    text = (i+1).toString() + ". " + items.name +
+                            "\n Summary: " +
+                            NumberFormat.getCurrencyInstance().format(items.price.toFloat()/100) +
+                            " * " + items.quantity + " = " +
+                            NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
+                )
+
+            }
+        }
+    }
+
+
     @Preview (showBackground = true)
     @Composable
     fun ButtonsRow(){
@@ -176,13 +199,17 @@ class MainActivity : ComponentActivity(), MyInterface {
         ){
             Button(onClick = {
                 scan()
-            }) {
+            },
+                colors = ButtonDefaults.buttonColors(containerColor = Purple40)
+            ) {
                 Text(text = "Scan cheque")
             }
             Button(onClick = {
 
-            }) {
-                Text(text = "Add cheque")
+            },
+                colors = ButtonDefaults.buttonColors(containerColor = Purple40))
+            {
+                Text(text = "Add people")
             }
         }
     }
