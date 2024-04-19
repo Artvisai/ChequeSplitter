@@ -83,7 +83,6 @@ const val CUSTOMER_ADD_SCREEN = "customer_add_screen"
 class MainActivity : ComponentActivity(), MyInterface {
     @Inject
     lateinit var mainDb: MainDb
-    var counter = 0
 
 
 
@@ -332,7 +331,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                 .fillMaxWidth()
                 .padding(15.dp),
                 verticalAlignment = Alignment.CenterVertically
-                ) {
+            ) {
                 Text(
                     modifier = Modifier
                         .fillMaxWidth(0.8f)

@@ -2,6 +2,7 @@ package com.example.chequesplitter.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +14,7 @@ interface Dao {
 
     @Update
     suspend fun updateCheque(cheque: Cheque)
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProduct(product: Product)
 
     @Update

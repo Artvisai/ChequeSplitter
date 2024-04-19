@@ -14,21 +14,11 @@ import androidx.room.TypeConverters
 abstract class MainDb : RoomDatabase() {
     abstract val dao: Dao
     companion object {
-        @Volatile
-        private var INSTANCE: MainDb? = null
-
-        fun getInstance(context: Context): MainDb {
-            synchronized(this) {
-                var instance = INSTANCE
-                if (instance == null) {
-                    instance = Room.databaseBuilder(context.applicationContext,
+        fun createDatabase(context: Context): MainDb {
+            return Room.databaseBuilder(context.applicationContext,
                         MainDb::class.java, "main_db")
                         .fallbackToDestructiveMigration()
                         .build()
-                    INSTANCE = instance
-                }
-                return instance
-            }
         }
     }
 }
