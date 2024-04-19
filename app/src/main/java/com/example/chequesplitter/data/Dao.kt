@@ -3,7 +3,6 @@ package com.example.chequesplitter.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -19,6 +18,11 @@ interface Dao {
 
     @Update
     suspend fun updateProduct(product: Product)
+    @Insert
+    suspend fun insertCustomer(customer: Customer)
+
+    @Update
+    suspend fun updateCustomer(customer: Customer)
 
     @Query("SELECT * FROM products WHERE idQR = :qr")
     fun getAllProductsByQr(qr: String): Flow<List<Product>>
@@ -26,6 +30,11 @@ interface Dao {
     @Query("SELECT * FROM cheques")
     fun getAllCheques(): Flow<List<Cheque>>
 
+    @Query("SELECT * FROM customers")
+    fun getAllCustomers(): Flow<List<Customer>>
+
     @Query("SELECT * FROM cheques WHERE qrData = :qr")
     fun getChequeByQr(qr: String): Cheque?
+    @Query("SELECT * FROM customers WHERE name = :n")
+    fun getCustomerByName(n: String): Customer?
 }
