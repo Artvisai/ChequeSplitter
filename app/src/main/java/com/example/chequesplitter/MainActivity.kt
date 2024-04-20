@@ -6,11 +6,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,14 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,11 +31,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Alignment.Companion.BottomCenter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -54,12 +50,13 @@ import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.data.Customer
 import com.example.chequesplitter.data.MyInterface
 import com.example.chequesplitter.data.Product
+import com.example.chequesplitter.screens.CustomerAddScreen
+import com.example.chequesplitter.screens.MainListScreen
 import com.example.chequesplitter.ui.theme.ChequeSplitterTheme
 import com.example.chequesplitter.ui.theme.Purple200
 import com.example.chequesplitter.ui.theme.Purple40
 import com.example.chequesplitter.ui.theme.PurpleGrey100
 import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,8 +80,6 @@ const val CUSTOMER_ADD_SCREEN = "customer_add_screen"
 class MainActivity : ComponentActivity(), MyInterface {
     @Inject
     lateinit var mainDb: MainDb
-
-
 
     private val scanLauncher = registerForActivityResult(
         ScanContract()
@@ -132,7 +127,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                     startDestination = MAIN_LIST_SCREEN
                 ){
                     composable(MAIN_LIST_SCREEN){
-                        MainListScreen(chequeStateList, navController) {
+                        MainListScreen(mainDb, scanLauncher, chequeStateList, navController) {
                             navController.navigate(CHEQUE_EDIT_SCREEN)
                             navController.navigate(CUSTOMER_ADD_SCREEN)
                         }
@@ -143,12 +138,12 @@ class MainActivity : ComponentActivity(), MyInterface {
                         ) { type = NavType.StringType }))
                     { navBackStack ->
                         val qrData = navBackStack.arguments?.getString("qrData")
-                        ChequeEditScreen(qrData) {
+                        ChequeEditScreen(navController, qrData) {
                             navController.navigate(MAIN_LIST_SCREEN)
                         }
                     }
                     composable(CUSTOMER_ADD_SCREEN){
-                        CustomerAddScreen(navController, customerStateList){
+                        CustomerAddScreen(this@MainActivity, mainDb, navController, customerStateList){
                             navController.navigate(MAIN_LIST_SCREEN)
                         }
                     }
@@ -158,30 +153,10 @@ class MainActivity : ComponentActivity(), MyInterface {
     }
 
     @Composable
-    fun MainListScreen(chequeStateList : State<List<Cheque>>, navController: NavController, onClick: () -> Unit) {
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.9f),
-            ) {
-                items(chequeStateList.value) { cheque ->
-                    ChequeItem(cheque, navController)
-                }
-            }
-            MainButtonsRow(navController, onClick)
-        }
-    }
-
-    @Composable
-    fun ChequeEditScreen(qrData: String?, onClick: () -> Unit){
+    fun ChequeEditScreen(navController: NavController, qrData: String?, onClick: () -> Unit){
         val productStateList = mainDb.dao.getAllProductsByQr(qrData ?: "")
             .collectAsState(initial = emptyList())
-        var text by remember { mutableStateOf("") }
+        var textState = remember { mutableStateOf("") }
         val userStringList = mutableListOf<String>()
         for (i in 0 until productStateList.value.size){
             userStringList += ""
@@ -202,7 +177,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                             .padding(bottom = 10.dp)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .background(PurpleGrey100))
+                            .background(Purple200))
                     {
                         Text(
                             modifier = Modifier
@@ -224,224 +199,39 @@ class MainActivity : ComponentActivity(), MyInterface {
                     }
                 }
             }
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp),
-                text = userStringList.size.toString(),
-            )
-            Button(onClick = {
-                for (item in userStringList){
-                    text += item
-                }
-            }) {
-                Text(text = "Count")
-            }
-        }
-    }
-
-    @Composable
-    fun CustomerAddScreen(navController: NavController, customerStateList:  State<List<Customer>>, onClick: () -> Unit){
-        val textState = remember { mutableStateOf("") }
-
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally){
-            LazyColumn(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.7f),
-            ) {
-                items(customerStateList.value) { customer ->
-                    Column(modifier = Modifier
-                        .padding(bottom = 10.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PurpleGrey100)){
-                        Text(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(15.dp),
-                            text = customer.name,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-            TextField(value = textState.value, onValueChange = {
-               textState.value = it
-            },
-                label = {
-                        Text(text = "Name")
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-            )
-            CustomerAddButtons(navController, textState)
-        }
-    }
-
-    @Composable
-    fun CustomerAddButtons(navController: NavController, textState: MutableState<String>) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(15.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ){
-            Button(onClick = {
-                navController.navigate(MAIN_LIST_SCREEN)
-            },
-                colors = ButtonDefaults.buttonColors(containerColor = Purple40)
-            ) {
-                Text(text = "Back")
-            }
-            Button(onClick = {
-                addCustomer(textState)
-                navController.navigate(MAIN_LIST_SCREEN)
-            },
-                colors = ButtonDefaults.buttonColors(containerColor = Purple40))
-            {
-                Text(text = "Save")
-            }
-        }
-    }
-
-
-    @Composable
-    fun ChequeItem(cheque: Cheque, navController: NavController){
-        var isExpanded by remember {
-            mutableStateOf(false)
-        }
-        val productStateList = mainDb.dao.getAllProductsByQr(cheque.qrData)
-            .collectAsState(initial = emptyList())
-        Card(colors = CardDefaults.cardColors(
-            containerColor = Purple200,
-        ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = if (isExpanded) 0.dp else 10.dp)
-                .clickable {
-                    isExpanded = !isExpanded
-                }
-        ) {
             Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(15.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .padding(15.dp),
-                    text = cheque.storeName + "\n" + cheque.date,
-                    textAlign = TextAlign.Center
-                )
-                Button(onClick = {
-                    navController.navigate("cheque_edit_screen/${cheque.qrData}")
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = Purple40)
-                ) {
-                    Text(text = "$")
-                }
-            }
-        }
-        if (isExpanded)
-            ProductsColumn(productStateList)
-    }
-
-    @Composable
-    fun ProductsColumn(productStateList: State<List<Product>>){
-        Column(
-            modifier = Modifier
-                .padding(bottom = 10.dp)
+                .padding(10.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(PurpleGrey100),
-        ){
-            for ((i, items) in productStateList.value.withIndex()){
+                .background(PurpleGrey100)){
                 Text(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
                         .padding(15.dp),
-                    text = (i+1).toString() + ". " + items.name +
-                            "\n Summary: " +
-                            NumberFormat.getCurrencyInstance().format(items.price.toFloat()/100) +
-                            " * " + items.quantity + " = " +
-                            NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
+                    text = textState.value,
                 )
-
-            }
-        }
-    }
-
-
-    @Composable
-    fun MainButtonsRow(navController: NavController, onClick: () -> Unit){
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ){
-            Button(onClick = {
-                scan()
-            },
-                colors = ButtonDefaults.buttonColors(containerColor = Purple40)
-            ) {
-                Text(text = "Scan cheque")
-            }
-            Button(onClick = {
-                navController.navigate(CUSTOMER_ADD_SCREEN)
-            },
-                colors = ButtonDefaults.buttonColors(containerColor = Purple40))
-            {
-                Text(text = "Add people")
-            }
-        }
-    }
-
-    private fun addCustomer(textState: MutableState<String>) {
-        if (textState.value == "") {
-            Toast.makeText(
-                this,
-                "Text data is null!",
-                Toast.LENGTH_SHORT
-            ).show()
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                val customerByName = mainDb.dao.getCustomerByName(textState.value)
-                if (customerByName == null){
-                    mainDb.dao.insertCustomer(
-                        Customer(
-                            textState.value
-                        )
-                    )
-                }else{
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Duplicated item!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                Button(onClick = { /*TODO*/ },
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple40))
+                {
+                    Text(text = "Choose")
                 }
 
             }
-
+            EditButtonsRow(navController)
         }
     }
 
+
+
     @Composable
-    fun EditButtonsRow(){
+    fun EditButtonsRow(navController: NavController){
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ){
             Button(onClick = {
-
+                navController.navigate(MAIN_LIST_SCREEN)
             },
                 colors = ButtonDefaults.buttonColors(containerColor = Purple40)
             ) {
@@ -457,15 +247,23 @@ class MainActivity : ComponentActivity(), MyInterface {
         }
     }
 
-    private fun scan() {
-        val options = ScanOptions()
-        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-        options.setPrompt("Scan a QR-code")
-        options.setCameraId(0) // Use a specific camera of the device
-        options.setBeepEnabled(false)
-        options.setBarcodeImageEnabled(true)
-        scanLauncher.launch(options)
+    @Composable
+    fun DialogCustomers(customerStateList: State<List<Customer>>,  textState: State<String>){
+        Dialog(onDismissRequest = {
+
+        }){
+            LazyColumn(modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+            ){
+                items(customerStateList.value){
+
+                }
+            }
+        }
     }
+
 
     private fun getChequeResult(qrraw: String) {
         val url = "https://proverkacheka.com/api/v1/check/get"
