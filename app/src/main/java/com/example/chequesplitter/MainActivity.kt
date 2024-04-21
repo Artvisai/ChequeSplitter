@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -175,8 +176,7 @@ class MainActivity : ComponentActivity(), MyInterface {
             userStringList += ""
         }
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize()
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -185,30 +185,41 @@ class MainActivity : ComponentActivity(), MyInterface {
                     .fillMaxHeight(0.8f),
             ) {
                 itemsIndexed(productStateList.value) { i, items ->
-                    Column(
-                        modifier = Modifier
-                            .padding(bottom = 10.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Purple200),
-                        horizontalAlignment = Alignment.CenterHorizontally)
-                    {
-                        Text(
+                    Row(modifier = Modifier
+                        .padding(bottom = 10.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Purple200)){
+                        val checkedState = remember { mutableStateOf(false) }
+                        Checkbox(
+                            checked = checkedState.value,
+                            onCheckedChange = { checkedState.value = it }
+                        )
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(15.dp),
-                            text = (i+1).toString() + ". " + items.name +
-                                    "\n Summary: " +
-                                    NumberFormat.getCurrencyInstance().format(items.price.toFloat()/100) +
-                                    " * " + items.quantity + " = " +
-                                    NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
+                                .weight(1f)
                         )
-                        Text(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(15.dp),
-                            text = "Customers: "
-                        )
+                        {
+                            Text(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(15.dp),
+                                text = (i + 1).toString() + ". " + items.name +
+                                        "\n Summary: " +
+                                        NumberFormat.getCurrencyInstance()
+                                            .format(items.price.toFloat() / 100) +
+                                        " * " + items.quantity + " = " +
+                                        NumberFormat.getCurrencyInstance()
+                                            .format(items.sum.toFloat() / 100),
+                            )
+                            Text(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(15.dp),
+                                text = "Customers: "
+                            )
+                        }
                     }
                 }
             }
