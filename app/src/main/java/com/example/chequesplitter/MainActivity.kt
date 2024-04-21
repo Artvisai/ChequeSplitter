@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.navigation.NavType
@@ -156,13 +159,23 @@ class MainActivity : ComponentActivity(), MyInterface {
     fun ChequeEditScreen(navController: NavController, qrData: String?, onClick: () -> Unit){
         val productStateList = mainDb.dao.getAllProductsByQr(qrData ?: "")
             .collectAsState(initial = emptyList())
-        var textState = remember { mutableStateOf("") }
+        val customerStateList = mainDb.dao.getAllCustomers()
+            .collectAsState(initial = emptyList())
+        var dialogState = remember {
+            mutableStateOf(false)
+        }
+        val textState = remember { mutableStateOf("") }
+        if (dialogState.value){
+            DialogCustomers(dialogState, customerStateList, onClickCustomer = {
+                textState.value = it
+            })
+        }
         val userStringList = mutableListOf<String>()
         for (i in 0 until productStateList.value.size){
             userStringList += ""
         }
         Column(
-            Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LazyColumn(
@@ -177,7 +190,8 @@ class MainActivity : ComponentActivity(), MyInterface {
                             .padding(bottom = 10.dp)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Purple200))
+                            .background(Purple200),
+                        horizontalAlignment = Alignment.CenterHorizontally)
                     {
                         Text(
                             modifier = Modifier
@@ -189,12 +203,11 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     " * " + items.quantity + " = " +
                                     NumberFormat.getCurrencyInstance().format(items.sum.toFloat()/100),
                         )
-                        TextField(value = userStringList[i], onValueChange = {
-                            userStringList[i] = it
-                        },
+                        Text(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(15.dp)
+                                .padding(15.dp),
+                            text = "Customers: "
                         )
                     }
                 }
@@ -203,14 +216,17 @@ class MainActivity : ComponentActivity(), MyInterface {
                 .padding(10.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(PurpleGrey100)){
+                .background(PurpleGrey100),
+                verticalAlignment = Alignment.CenterVertically){
                 Text(
                     modifier = Modifier
                         .weight(1f)
                         .padding(15.dp),
                     text = textState.value,
                 )
-                Button(onClick = { /*TODO*/ },
+                Button(onClick = {
+                     dialogState.value = true
+                },
                     colors = ButtonDefaults.buttonColors(containerColor = Purple40))
                 {
                     Text(text = "Choose")
@@ -219,6 +235,44 @@ class MainActivity : ComponentActivity(), MyInterface {
             }
             EditButtonsRow(navController)
         }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DialogCustomers(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
+        var textState = remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = {
+            dialogState.value = false
+        }, content = {
+            LazyColumn(modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(10.dp))
+                .background(PurpleGrey100)
+            ){
+                items(customerStateList.value){customer ->
+                    Column(modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PurpleGrey100)
+                        .clickable {
+                            textState.value = customer.name
+                            onClickCustomer(textState.value)
+                            dialogState.value = false
+                        }){
+                        Text(modifier = Modifier
+                            .padding(15.dp)
+                            .fillMaxWidth(),
+                            text = customer.name,
+                            fontSize = 25.sp
+                        )
+                    }
+
+                }
+            }
+        })
     }
 
 
@@ -243,23 +297,6 @@ class MainActivity : ComponentActivity(), MyInterface {
                 colors = ButtonDefaults.buttonColors(containerColor = Purple40))
             {
                 Text(text = "Ok")
-            }
-        }
-    }
-
-    @Composable
-    fun DialogCustomers(customerStateList: State<List<Customer>>,  textState: State<String>){
-        Dialog(onDismissRequest = {
-
-        }){
-            LazyColumn(modifier = Modifier
-                .padding(10.dp)
-                .fillMaxWidth()
-                .fillMaxHeight()
-            ){
-                items(customerStateList.value){
-
-                }
             }
         }
     }
