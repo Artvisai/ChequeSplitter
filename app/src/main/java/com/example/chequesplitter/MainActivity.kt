@@ -21,16 +21,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -49,9 +44,9 @@ import com.android.volley.AuthFailureError
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
-import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.data.Customer
+import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.MyInterface
 import com.example.chequesplitter.data.Product
 import com.example.chequesplitter.screens.CustomerAddScreen
@@ -65,6 +60,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.text.NumberFormat
@@ -162,18 +158,21 @@ class MainActivity : ComponentActivity(), MyInterface {
             .collectAsState(initial = emptyList())
         val customerStateList = mainDb.dao.getAllCustomers()
             .collectAsState(initial = emptyList())
-        var dialogState = remember {
+        val dialogChooseCustomerState = remember {
             mutableStateOf(false)
         }
-        val textState = remember { mutableStateOf("") }
-        if (dialogState.value){
-            DialogCustomers(dialogState, customerStateList, onClickCustomer = {
-                textState.value = it
+        val isInArrayState = remember {
+            mutableStateOf(false)
+        }
+        val chosenUserTextState = remember { mutableStateOf("") }
+        if (dialogChooseCustomerState.value){
+            DialogChooseCustomer(dialogChooseCustomerState, customerStateList, onClickCustomer = {
+                chosenUserTextState.value = it
             })
         }
-        val userStringList = mutableListOf<String>()
-        for (i in 0 until productStateList.value.size){
-            userStringList += ""
+        val productUserStringList = mutableListOf<String>()
+        for (i in productStateList.value){
+            productUserStringList += ""
         }
         Column(
             modifier = Modifier.fillMaxSize()
@@ -185,40 +184,83 @@ class MainActivity : ComponentActivity(), MyInterface {
                     .fillMaxHeight(0.8f),
             ) {
                 itemsIndexed(productStateList.value) { i, items ->
-                    Row(modifier = Modifier
-                        .padding(bottom = 10.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Purple200)){
-                        val checkedState = remember { mutableStateOf(false) }
-                        Checkbox(
-                            checked = checkedState.value,
-                            onCheckedChange = { checkedState.value = it }
-                        )
-                        Column(
+                    val arrayState = remember {
+                    mutableStateOf(JSONArray())
+                    }
+                    val objState = remember {
+                        mutableStateOf(JSONObject())
+                    }
+                    objState.value = JSONObject().put("customers", arrayState.value)
+                    Column(
+                        modifier = Modifier
+                            .padding(bottom = 10.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Purple200)
+                    )
+                    {
+                        Text(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .padding(15.dp),
+                            text = (i + 1).toString() + ". " + items.name +
+                                    "\n Summary: " +
+                                    NumberFormat.getCurrencyInstance()
+                                        .format(items.price.toFloat() / 100) +
+                                    " * " + items.quantity + " = " +
+                                    NumberFormat.getCurrencyInstance()
+                                        .format(items.sum.toFloat() / 100),
                         )
-                        {
-                            Text(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(15.dp),
-                                text = (i + 1).toString() + ". " + items.name +
-                                        "\n Summary: " +
-                                        NumberFormat.getCurrencyInstance()
-                                            .format(items.price.toFloat() / 100) +
-                                        " * " + items.quantity + " = " +
-                                        NumberFormat.getCurrencyInstance()
-                                            .format(items.sum.toFloat() / 100),
-                            )
-                            Text(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(15.dp),
-                                text = "Customers: "
-                            )
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(15.dp),
+                            text = "Customers: " + objState.value.getString("customers")
+                        )
+                        Row(modifier = Modifier
+                            .padding(10.dp)
+                            .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically){
+                            Button(onClick = {
+                                /*dialogRemoveCustomerState.value = true*/
+                                if (chosenUserTextState.value != ""){
+                                    for (t in 0 until arrayState.value.length()) {
+                                        if (arrayState.value.getString(t) == chosenUserTextState.value) {
+                                            arrayState.value.remove(t)
+                                            break
+                                        }
+                                        Log.e("MyLog", "Remove: " + objState.value.toString())
+                                    }
+                                    Log.e("MyLog", "Remove: " + objState.value.toString())
+                                }
+                                objState.value = JSONObject().put("customers", arrayState.value)
+                            },
+                                colors = ButtonDefaults.buttonColors(containerColor = Purple40))
+                            {
+                                Text(text = "Remove")
+                            }
+                            Button(onClick = {
+                                /*dialogAddCustomerState.value = true*/
+                                isInArrayState.value = false
+                                if (chosenUserTextState.value != ""){
+                                    for (t in 0 until arrayState.value.length()){
+                                        isInArrayState.value = isInArrayState.value or (arrayState.value.getString(t) == chosenUserTextState.value)
+                                        Log.e("MyLog", "Add: " + objState.value.toString())
+                                    }
+                                    if (!isInArrayState.value){
+                                        arrayState.value.put(chosenUserTextState.value)
+                                        Log.e("MyLog", "Add After: " + objState.value.toString())
+                                    }
+                                    Log.e("MyLog", "Add After: " + objState.value.toString())
+                                }
+                                objState.value = JSONObject().put("customers", arrayState.value)
+                            },
+                                colors = ButtonDefaults.buttonColors(containerColor = Purple40))
+                            {
+                                Text(text = "Add")
+                            }
+
                         }
                     }
                 }
@@ -233,10 +275,10 @@ class MainActivity : ComponentActivity(), MyInterface {
                     modifier = Modifier
                         .weight(1f)
                         .padding(15.dp),
-                    text = textState.value,
+                    text = chosenUserTextState.value,
                 )
                 Button(onClick = {
-                     dialogState.value = true
+                     dialogChooseCustomerState.value = true
                 },
                     colors = ButtonDefaults.buttonColors(containerColor = Purple40))
                 {
@@ -250,8 +292,84 @@ class MainActivity : ComponentActivity(), MyInterface {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun DialogCustomers(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
-        var textState = remember { mutableStateOf("") }
+    fun DialogAddCustomerToProduct(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
+        val textState = remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = {
+            dialogState.value = false
+        }, content = {
+            LazyColumn(modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(10.dp))
+                .background(PurpleGrey100)
+            ){
+                items(customerStateList.value){customer ->
+                    Column(modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PurpleGrey100)
+                        .clickable {
+                            textState.value = customer.name
+                            onClickCustomer(textState.value)
+                            dialogState.value = false
+                        }){
+                        Text(modifier = Modifier
+                            .padding(15.dp)
+                            .fillMaxWidth(),
+                            text = customer.name,
+                            fontSize = 25.sp
+                        )
+                    }
+
+                }
+            }
+        })
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DialogRemoveCustomerFromProduct(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
+        val textState = remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = {
+            dialogState.value = false
+        }, content = {
+            LazyColumn(modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(10.dp))
+                .background(PurpleGrey100)
+            ){
+                items(customerStateList.value){customer ->
+                    Column(modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PurpleGrey100)
+                        .clickable {
+                            textState.value = customer.name
+                            onClickCustomer(textState.value)
+                            dialogState.value = false
+                        }){
+                        Text(modifier = Modifier
+                            .padding(15.dp)
+                            .fillMaxWidth(),
+                            text = customer.name,
+                            fontSize = 25.sp
+                        )
+                    }
+
+                }
+            }
+        })
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DialogChooseCustomer(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
+        val textState = remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = {
             dialogState.value = false
         }, content = {
@@ -357,6 +475,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     product.getString("quantity").toFloat(),
                                     product.getString("price").toInt(),
                                     product.getString("sum").toInt(),
+                                    "",
                                     qrraw
                                 )
                             )

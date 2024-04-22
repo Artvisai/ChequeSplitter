@@ -19,6 +19,7 @@ data class Product(
     val quantity: Float,
     val price: Int,
     val sum: Int,
+    val customersString: String = "",
     @ColumnInfo(index = true)
     val idQR: String,
 )
