@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -170,9 +171,11 @@ class MainActivity : ComponentActivity(), MyInterface {
                 chosenUserTextState.value = it
             })
         }
-        val productUserStringList = mutableListOf<String>()
+        val productUserStringList = remember {
+            mutableStateListOf<String>()
+        }
         for (i in productStateList.value){
-            productUserStringList += ""
+            productUserStringList.add("")
         }
         Column(
             modifier = Modifier.fillMaxSize()
@@ -215,7 +218,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(15.dp),
-                            text = "Customers: " + objState.value.getString("customers")
+                            text = "Customers: " + objState.value.getString("customers") + items.customersString
                         )
                         Row(modifier = Modifier
                             .padding(10.dp)
@@ -223,7 +226,6 @@ class MainActivity : ComponentActivity(), MyInterface {
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically){
                             Button(onClick = {
-                                /*dialogRemoveCustomerState.value = true*/
                                 if (chosenUserTextState.value != ""){
                                     for (t in 0 until arrayState.value.length()) {
                                         if (arrayState.value.getString(t) == chosenUserTextState.value) {
@@ -235,13 +237,13 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     Log.e("MyLog", "Remove: " + objState.value.toString())
                                 }
                                 objState.value = JSONObject().put("customers", arrayState.value)
+                                productUserStringList[i] = objState.value.toString()
                             },
                                 colors = ButtonDefaults.buttonColors(containerColor = Purple40))
                             {
                                 Text(text = "Remove")
                             }
                             Button(onClick = {
-                                /*dialogAddCustomerState.value = true*/
                                 isInArrayState.value = false
                                 if (chosenUserTextState.value != ""){
                                     for (t in 0 until arrayState.value.length()){
@@ -255,6 +257,7 @@ class MainActivity : ComponentActivity(), MyInterface {
                                     Log.e("MyLog", "Add After: " + objState.value.toString())
                                 }
                                 objState.value = JSONObject().put("customers", arrayState.value)
+                                productUserStringList[i] = objState.value.toString()
                             },
                                 colors = ButtonDefaults.buttonColors(containerColor = Purple40))
                             {
@@ -286,84 +289,23 @@ class MainActivity : ComponentActivity(), MyInterface {
                 }
 
             }
-            EditButtonsRow(navController)
+            EditButtonsRow(navController, productStateList, onClickEditCheque = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    for ((i, prod) in productStateList.value.withIndex()){
+                        mainDb.dao.updateProduct(Product(
+                            prod.productId,
+                            prod.name,
+                            prod.quantity,
+                            prod.price,
+                            prod.sum,
+                            productUserStringList[i],
+                            prod.idQR
+                        ))
+                        Log.e("MyLog", productUserStringList[i])
+                    }
+                }
+            })
         }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun DialogAddCustomerToProduct(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
-        val textState = remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = {
-            dialogState.value = false
-        }, content = {
-            LazyColumn(modifier = Modifier
-                .padding(10.dp)
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(10.dp))
-                .background(PurpleGrey100)
-            ){
-                items(customerStateList.value){customer ->
-                    Column(modifier = Modifier
-                        .padding(top = 10.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PurpleGrey100)
-                        .clickable {
-                            textState.value = customer.name
-                            onClickCustomer(textState.value)
-                            dialogState.value = false
-                        }){
-                        Text(modifier = Modifier
-                            .padding(15.dp)
-                            .fillMaxWidth(),
-                            text = customer.name,
-                            fontSize = 25.sp
-                        )
-                    }
-
-                }
-            }
-        })
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun DialogRemoveCustomerFromProduct(dialogState: MutableState<Boolean>, customerStateList: State<List<Customer>>, onClickCustomer: (String) -> Unit){
-        val textState = remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = {
-            dialogState.value = false
-        }, content = {
-            LazyColumn(modifier = Modifier
-                .padding(10.dp)
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(10.dp))
-                .background(PurpleGrey100)
-            ){
-                items(customerStateList.value){customer ->
-                    Column(modifier = Modifier
-                        .padding(top = 10.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PurpleGrey100)
-                        .clickable {
-                            textState.value = customer.name
-                            onClickCustomer(textState.value)
-                            dialogState.value = false
-                        }){
-                        Text(modifier = Modifier
-                            .padding(15.dp)
-                            .fillMaxWidth(),
-                            text = customer.name,
-                            fontSize = 25.sp
-                        )
-                    }
-
-                }
-            }
-        })
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -404,10 +346,12 @@ class MainActivity : ComponentActivity(), MyInterface {
         })
     }
 
-
-
     @Composable
-    fun EditButtonsRow(navController: NavController){
+    fun EditButtonsRow(
+        navController: NavController,
+        productStateList: State<List<Product>>,
+        onClickEditCheque: (State<List<Product>>) -> Unit
+    ){
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -421,7 +365,8 @@ class MainActivity : ComponentActivity(), MyInterface {
                 Text(text = "Back")
             }
             Button(onClick = {
-
+                onClickEditCheque(productStateList)
+                navController.navigate(MAIN_LIST_SCREEN)
             },
                 colors = ButtonDefaults.buttonColors(containerColor = Purple40))
             {
