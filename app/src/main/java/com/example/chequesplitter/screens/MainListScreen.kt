@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.chequesplitter.CHEQUE_CALCULATE_SCREEN
+import com.example.chequesplitter.CHEQUE_EDIT_SCREEN
 import com.example.chequesplitter.CUSTOMER_ADD_SCREEN
 import com.example.chequesplitter.data.Cheque
 import com.example.chequesplitter.data.MainDb
@@ -113,25 +115,33 @@ fun ChequeItem(mainDb : MainDb, cheque: Cheque, navController: NavController){
                 isExpanded = !isExpanded
             }
     ) {
+        Text(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            text = cheque.storeName + "\n" + cheque.date,
+            textAlign = TextAlign.Center
+        )
         Row(modifier = Modifier
             .fillMaxWidth()
-            .padding(15.dp),
-            verticalAlignment = Alignment.CenterVertically
+            .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .padding(15.dp),
-                text = cheque.storeName + "\n" + cheque.date,
-                textAlign = TextAlign.Center
-            )
             Button(onClick = {
-                navController.navigate("cheque_edit_screen/${cheque.qrData}")
+                navController.navigate("$CHEQUE_EDIT_SCREEN/${cheque.qrData}")
             },
                 colors = ButtonDefaults.buttonColors(containerColor = Purple40)
             ) {
-                Text(text = "$")
+                Text(text = "Edit")
             }
+            Button(onClick = {
+                navController.navigate("$CHEQUE_CALCULATE_SCREEN/${cheque.qrData}")
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Purple40)
+            ) {
+            Text(text = "Calculate")
+        }
         }
     }
     if (isExpanded)

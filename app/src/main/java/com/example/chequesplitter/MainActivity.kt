@@ -1,13 +1,12 @@
 package com.example.chequesplitter
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,27 +17,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -53,10 +49,10 @@ import com.example.chequesplitter.data.Customer
 import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.MyInterface
 import com.example.chequesplitter.data.Product
+import com.example.chequesplitter.screens.ChequeEditScreen
 import com.example.chequesplitter.screens.CustomerAddScreen
 import com.example.chequesplitter.screens.MainListScreen
 import com.example.chequesplitter.ui.theme.ChequeSplitterTheme
-import com.example.chequesplitter.ui.theme.Purple200
 import com.example.chequesplitter.ui.theme.Purple40
 import com.example.chequesplitter.ui.theme.PurpleGrey100
 import com.journeyapps.barcodescanner.ScanContract
@@ -77,6 +73,7 @@ import javax.inject.Inject
 const val API_TOKEN = "Ваш API-токен"
 const val MAIN_LIST_SCREEN = "main_list_screen"
 const val CHEQUE_EDIT_SCREEN = "cheque_edit_screen"
+const val CHEQUE_CALCULATE_SCREEN = "cheque_calculate_screen"
 const val CUSTOMER_ADD_SCREEN = "customer_add_screen"
 
 
@@ -137,12 +134,22 @@ class MainActivity : ComponentActivity(), MyInterface {
                         }
                     }
                     composable(
-                        "cheque_edit_screen/{qrData}",
+                        "$CHEQUE_EDIT_SCREEN/{qrData}",
                         arguments = listOf(navArgument("qrData"
                         ) { type = NavType.StringType }))
                     { navBackStack ->
                         val qrData = navBackStack.arguments?.getString("qrData")
                         ChequeEditScreen(mainDb, navController, qrData) {
+                            navController.navigate(MAIN_LIST_SCREEN)
+                        }
+                    }
+                    composable(
+                        "$CHEQUE_CALCULATE_SCREEN/{qrData}",
+                        arguments = listOf(navArgument("qrData"
+                        ) { type = NavType.StringType }))
+                    { navBackStack ->
+                        val qrData = navBackStack.arguments?.getString("qrData")
+                        ChequeCalculateScreen(mainDb, navController, qrData) {
                             navController.navigate(MAIN_LIST_SCREEN)
                         }
                     }
@@ -155,6 +162,101 @@ class MainActivity : ComponentActivity(), MyInterface {
             }
         }
     }
+
+    @Composable
+    fun ChequeCalculateScreen(mainDb: MainDb, navController: NavHostController, qrData: String?, onClick: () -> Unit) {
+        val productStateList = mainDb.dao.getAllProductsByQr(qrData ?: "")
+            .collectAsState(initial = emptyList())
+        val chequeCustomerStateList = remember {
+            mutableStateListOf<String>()
+        }
+        val sumStateList = remember {
+            mutableStateListOf<Float>()
+        }
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ){
+            LazyColumn(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f),
+            ) {
+                itemsIndexed(chequeCustomerStateList) { i, item ->
+                    Column(modifier = Modifier
+                        .padding(bottom = 10.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PurpleGrey100)){
+                        Text(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(15.dp),
+                            text = item + ": " + NumberFormat.getCurrencyInstance().format(sumStateList[i]),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            CustomerCalculateButtons(navController, onClickCalculate = {
+                for (prod in productStateList.value){
+                    var arrayState = JSONArray()
+                    if (prod.customersString != ""){
+                        arrayState = JSONObject(prod.customersString).getJSONArray("customers")
+                        for (customer in 0 until  arrayState.length()){
+                            if (arrayState[customer] !in chequeCustomerStateList){
+                                chequeCustomerStateList.add(arrayState[customer].toString())
+                            }
+                        }
+                    }
+                }
+                for (i in chequeCustomerStateList){
+                    sumStateList.add(0f)
+                }
+                for ((i, item) in chequeCustomerStateList.withIndex()){
+                    var sumState = 0f
+                    for (prod in productStateList.value){
+                        var arrayState = JSONArray()
+                        if (prod.customersString != ""){
+                            arrayState = JSONObject(prod.customersString).getJSONArray("customers")
+                            for (customer in 0 until  arrayState.length()){
+                                if (arrayState[customer] == item){
+                                    sumState += prod.sum.toFloat()/100/arrayState.length()
+                                }
+                            }
+                        }
+                    }
+                    sumStateList[i] = sumState
+                }
+            })
+        }
+    }
+
+    @Composable
+    fun CustomerCalculateButtons(navController: NavController, onClickCalculate: () -> Unit) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(15.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ){
+            Button(onClick = {
+                navController.navigate(MAIN_LIST_SCREEN)
+            },
+                colors = ButtonDefaults.buttonColors(containerColor = Purple40)
+            ) {
+                Text(text = "Back")
+            }
+            Button(onClick = {
+                onClickCalculate()
+            },
+                colors = ButtonDefaults.buttonColors(containerColor = Purple40)
+            ) {
+                Text(text = "Calculate")
+            }
+        }
+    }
+
 
     private fun getChequeResult(qrraw: String) {
         val url = "https://proverkacheka.com/api/v1/check/get"

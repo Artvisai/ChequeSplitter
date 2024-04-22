@@ -1,4 +1,4 @@
-package com.example.chequesplitter
+package com.example.chequesplitter.screens
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.chequesplitter.MAIN_LIST_SCREEN
 import com.example.chequesplitter.data.Customer
 import com.example.chequesplitter.data.MainDb
 import com.example.chequesplitter.data.Product
@@ -119,7 +120,13 @@ fun ChequeEditScreen(mainDb: MainDb, navController: NavController, qrData: Strin
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(15.dp),
-                        text = "Customers: " + objStateList[i].getString("customers") + items.customersString
+                        text = "Customers: " + objStateList[i].getString("customers") +
+                                "\nLatest: " +
+                                if (items.customersString != ""){
+                                    JSONObject(items.customersString).getString("customers")
+                                } else {
+                                    ""
+                                }
                     )
                     Row(modifier = Modifier
                         .padding(10.dp)
@@ -273,7 +280,7 @@ fun EditButtonsRow(
         },
             colors = ButtonDefaults.buttonColors(containerColor = Purple40))
         {
-            Text(text = "Ok")
+            Text(text = "Save")
         }
     }
 }
