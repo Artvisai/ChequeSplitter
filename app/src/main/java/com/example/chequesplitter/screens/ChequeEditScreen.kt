@@ -121,7 +121,7 @@ fun ChequeEditScreen(mainDb: MainDb, navController: NavController, qrData: Strin
                             .fillMaxWidth()
                             .padding(15.dp),
                         text = "Customers: " + objStateList[i].getString("customers") +
-                                "\nLatest: " +
+                                "\nCurrent: " +
                                 if (items.customersString != ""){
                                     JSONObject(items.customersString).getString("customers")
                                 } else {

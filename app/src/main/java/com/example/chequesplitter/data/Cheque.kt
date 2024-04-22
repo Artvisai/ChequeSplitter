@@ -9,5 +9,6 @@ data class Cheque(
 @PrimaryKey
 val qrData: String,
 val storeName: String,
-val date: LocalDateTime? = null
+val date: LocalDateTime? = null,
+val totalSum: Int
 )

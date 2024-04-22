@@ -119,7 +119,9 @@ fun ChequeItem(mainDb : MainDb, cheque: Cheque, navController: NavController){
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp),
-            text = cheque.storeName + "\n" + cheque.date,
+            text = "Store: " + cheque.storeName + "\nDate: " + cheque.date +
+                    "\nTotalSum: " +
+                    NumberFormat.getCurrencyInstance().format(cheque.totalSum.toFloat()/100),
             textAlign = TextAlign.Center
         )
         Row(modifier = Modifier
